@@ -49,4 +49,7 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+# Run database migrations on startup, then start the app
+COPY --from=builder /app/node_modules ./node_modules
+
+CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
