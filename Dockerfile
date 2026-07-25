@@ -52,4 +52,4 @@ ENV HOSTNAME="0.0.0.0"
 # Run database migrations on startup, then start the app
 COPY --from=builder /app/node_modules ./node_modules
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+CMD ["sh", "-c", "until npx prisma migrate deploy; do echo 'Database not ready, retrying in 5s...'; sleep 5; done && node server.js"]
