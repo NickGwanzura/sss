@@ -85,8 +85,8 @@ async function runMigrations() {
       // Record the migration in _prisma_migrations table
       try {
         await prisma.$executeRawUnsafe(
-          `INSERT INTO _prisma_migrations (migration_name, started_at, finished_at, migration_file) 
-           VALUES ($1, NOW(), NOW(), $2)`,
+          `INSERT INTO _prisma_migrations (id, migration_name, started_at, finished_at, migration_file, checksum, applied_steps_count) 
+           VALUES (gen_random_uuid(), $1, NOW(), NOW(), $2, 'manual', 1)`,
           dir,
           `migrations/${dir}/migration.sql`
         );
