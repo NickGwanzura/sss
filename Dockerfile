@@ -37,7 +37,9 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/src/generated ./src/generated
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
+# Copy node_modules for Prisma CLI (needed for migrate deploy at runtime)
+COPY --from=builder /app/node_modules ./node_modules
 
 # Set correct permissions
 RUN chown -R nextjs:nodejs /app
@@ -48,8 +50,5 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-
-# Run database migrations on startup, then start the app
-COPY --from=builder /app/node_modules ./node_modules
 
 CMD ["sh", "-c", "until npx prisma migrate deploy; do echo 'Database not ready, retrying in 5s...'; sleep 5; done && node server.js"]
