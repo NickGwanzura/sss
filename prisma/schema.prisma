@@ -1,0 +1,726 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ========== ENUMS ==========
+
+enum UserRole {
+  SUPER_ADMIN
+  OPERATIONS_MANAGER
+  DISPATCHER
+  CONTROL_ROOM_OPERATOR
+  FINANCE
+  HR
+  FLEET_MANAGER
+  VAULT_OFFICER
+  DRIVER
+  GUARD
+  CLIENT
+  AUDITOR
+}
+
+enum TripStatus {
+  PENDING
+  ASSIGNED
+  EN_ROUTE
+  COLLECTED
+  DELIVERED
+  CLOSED
+  CANCELLED
+}
+
+enum CollectionOrderStatus {
+  PENDING
+  ASSIGNED
+  EN_ROUTE
+  COLLECTED
+  DELIVERED
+  CLOSED
+  CANCELLED
+}
+
+enum IncidentType {
+  VEHICLE_BREAKDOWN
+  ROBBERY_ATTEMPT
+  DELAYED_COLLECTION
+  CASH_DISCREPANCY
+  SEAL_BROKEN
+  LOST_COMMUNICATION
+  OTHER
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum Currency {
+  USD
+  ZWL
+  ZAR
+  EUR
+  GBP
+}
+
+enum VehicleStatus {
+  ACTIVE
+  IN_MAINTENANCE
+  OUT_OF_SERVICE
+  RETIRED
+}
+
+enum EmployeeRole {
+  DRIVER
+  COMMANDER
+  GUARD
+  SUPERVISOR
+}
+
+enum ClientType {
+  BANK
+  RETAILER
+  FUEL_STATION
+  CASINO
+  GOVERNMENT
+  SUPERMARKET
+  OTHER
+}
+
+enum CashBagStatus {
+  EMPTY
+  LOADED
+  IN_TRANSIT
+  DELIVERED
+  VERIFIED
+  DISCREPANCY
+}
+
+// ========== USER & AUTH ==========
+
+model User {
+  id             String     @id @default(uuid())
+  name           String?
+  email          String     @unique
+  emailVerified  DateTime?
+  image          String?
+  passwordHash   String?
+  role           UserRole   @default(CLIENT)
+  phone          String?
+  isActive       Boolean    @default(true)
+  twoFactorEnabled Boolean  @default(false)
+  lastLoginAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  accounts   Account[]
+  sessions   Session[]
+  activities AuditLog[]
+  assignedTrips Trip[]    @relation("DriverAssignment")
+  dispatchedBy Trip[]     @relation("DispatcherAssignment")
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ========== CLIENTS & BRANCHES ==========
+
+model Client {
+  id              String     @id @default(uuid())
+  name            String
+  type            ClientType @default(OTHER)
+  code            String     @unique
+  logo            String?
+  address         String?
+  city            String?
+  country         String?
+  phone           String?
+  email           String?
+  website         String?
+  taxId           String?
+  riskLevel       String     @default("Low")
+  slaResponse     Int?
+  notes           String?
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  contacts    ClientContact[]
+  branches    Branch[]
+  contracts   Contract[]
+  invoices    Invoice[]
+  collectionOrders CollectionOrder[]
+
+  @@map("clients")
+}
+
+model ClientContact {
+  id        String  @id @default(uuid())
+  clientId  String
+  name      String
+  position  String?
+  phone     String?
+  email     String?
+  isPrimary Boolean @default(false)
+  notes     String?
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_contacts")
+}
+
+model Branch {
+  id                String     @id @default(uuid())
+  clientId          String
+  name              String
+  code              String?
+  address           String?
+  city              String?
+  latitude          Float?
+  longitude         Float?
+  openingTime       String?
+  closingTime       String?
+  collectionFrequency String?
+  preferredPickupStart String?
+  preferredPickupEnd   String?
+  cashLimit         Float?
+  currency          Currency   @default(USD)
+  phone             String?
+  email             String?
+  contactPerson     String?
+  notes             String?
+  isActive          Boolean    @default(true)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  collectionOrders CollectionOrder[]
+  tripStops        TripStop[]
+  atms             ATM[]
+
+  @@map("branches")
+}
+
+// ========== CONTRACTS ==========
+
+model Contract {
+  id              String   @id @default(uuid())
+  clientId        String
+  contractNumber  String   @unique
+  title           String
+  description     String?
+  startDate       DateTime
+  endDate         DateTime?
+  value           Float?
+  currency        Currency @default(USD)
+  billingCycle    String   @default("Monthly")
+  terms           String?
+  fileUrl         String?
+  status          String   @default("Active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  client    Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  invoices  Invoice[]   @relation("ContractInvoices")
+
+  @@map("contracts")
+}
+
+// ========== VEHICLES ==========
+
+model Vehicle {
+  id              String        @id @default(uuid())
+  registration    String        @unique
+  vin             String?
+  make            String
+  model           String
+  year            Int?
+  color           String?
+  capacity        Float?
+  fuelType        String?
+  trackerId       String?
+  panicDeviceId   String?
+  insurancePolicy String?
+  insuranceExpiry DateTime?
+  lastServiceAt   DateTime?
+  nextServiceDue  DateTime?
+  licenseExpiry   DateTime?
+  status          VehicleStatus @default(ACTIVE)
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  trips        Trip[]
+  serviceLogs  VehicleServiceLog[]
+  maintenanceSchedules MaintenanceSchedule[]
+
+  @@map("vehicles")
+}
+
+model VehicleServiceLog {
+  id          String   @id @default(uuid())
+  vehicleId   String
+  serviceDate DateTime
+  serviceType String
+  description String?
+  mileage     Int?
+  cost        Float?
+  provider    String?
+  nextService DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("vehicle_service_logs")
+}
+
+model MaintenanceSchedule {
+  id          String   @id @default(uuid())
+  vehicleId   String
+  task        String
+  frequency   String   // e.g., "5000km", "3 months"
+  lastDoneAt  DateTime?
+  nextDueAt   DateTime?
+  assignedTo  String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("maintenance_schedules")
+}
+
+// ========== EMPLOYEES / CREW ==========
+
+model Employee {
+  id              String       @id @default(uuid())
+  employeeCode    String       @unique
+  firstName       String
+  lastName        String
+  role            EmployeeRole
+  phone           String?
+  email           String?
+  address         String?
+  dateOfBirth     DateTime?
+  dateHired       DateTime?
+  licenseNumber   String?
+  licenseExpiry   DateTime?
+  firearmPermit   String?
+  firearmExpiry   DateTime?
+  medicalExpiry   DateTime?
+  trainingRecords String?
+  emergencyContact String?
+  emergencyPhone  String?
+  isActive        Boolean      @default(true)
+  notes           String?
+  userId          String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  crewAssignments TripCrew[]
+
+  @@map("employees")
+}
+
+// ========== TRIPS & ROUTES ==========
+
+model Trip {
+  id              String     @id @default(uuid())
+  tripNumber      String     @unique
+  description     String?
+  status          TripStatus @default(PENDING)
+  scheduledDate   DateTime
+  startTime       DateTime?
+  endTime         DateTime?
+  estimatedDistance Float?
+  estimatedDuration Int?
+  actualDistance  Float?
+  fuelEstimate    Float?
+  fuelActual      Float?
+  notes           String?
+  deviationAlert  Boolean    @default(false)
+  panicActivated  Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  driverId    String?
+  dispatcherId String?
+  vehicleId   String?
+
+  driver     User?    @relation("DriverAssignment", fields: [driverId], references: [id])
+  dispatcher User?    @relation("DispatcherAssignment", fields: [dispatcherId], references: [id])
+  vehicle    Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  stops       TripStop[]
+  crew        TripCrew[]
+  cashBags    CashBag[]
+  gpsLogs     GPSLog[]
+  incidents   Incident[]
+  documents   Document[]
+  dispatchLog DispatchLog?
+  collectionOrders CollectionOrder[]
+
+  @@map("trips")
+}
+
+model TripStop {
+  id           String        @id @default(uuid())
+  tripId       String
+  branchId     String?
+  stopOrder    Int
+  type         String        // "COLLECTION", "DELIVERY", "DEPOSIT"
+  branch       Branch?       @relation(fields: [branchId], references: [id])
+  status       String        @default("PENDING")
+  arrivalTime  DateTime?
+  departureTime DateTime?
+  eta          DateTime?
+  actualDistance Float?
+  notes        String?
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("trip_stops")
+}
+
+model TripCrew {
+  id         String       @id @default(uuid())
+  tripId     String
+  employeeId String
+  role       EmployeeRole
+
+  trip     Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@map("trip_crew")
+}
+
+model DispatchLog {
+  id              String   @id @default(uuid())
+  tripId          String   @unique
+  dispatchedAt    DateTime @default(now())
+  dispatchedById  String?
+  vehicleChecklist String?
+  crewBriefed     Boolean  @default(false)
+  cashBagsAssigned Boolean @default(false)
+  weaponsIssued   Boolean  @default(false)
+  bodyCameras     Boolean  @default(false)
+  tabletIssued    Boolean  @default(false)
+  sealNumbers     String?
+  supervisorSign  String?
+  driverSign      String?
+  notes           String?
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("dispatch_logs")
+}
+
+// ========== COLLECTION ORDERS ==========
+
+model CollectionOrder {
+  id              String               @id @default(uuid())
+  orderNumber     String               @unique
+  clientId        String
+  branchId        String
+  tripId          String?
+  pickupDate      DateTime
+  pickupWindowStart String?
+  pickupWindowEnd   String?
+  expectedAmount  Float?
+  actualAmount    Float?
+  currency        Currency             @default(USD)
+  priority        String               @default("Normal")
+  depositDestination String?
+  specialInstructions String?
+  status          CollectionOrderStatus @default(PENDING)
+  barcode         String?
+  sealNumber      String?
+  notes           String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  client Client        @relation(fields: [clientId], references: [id])
+  branch Branch        @relation(fields: [branchId], references: [id])
+  trip   Trip?         @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  cashBags CashBag[]
+
+  @@map("collection_orders")
+}
+
+// ========== CASH BAGS ==========
+
+model CashBag {
+  id                String        @id @default(uuid())
+  barcode           String        @unique
+  tripId            String?
+  collectionOrderId String?
+  sealNumber        String?
+  weight            Float?
+  currency          Currency      @default(USD)
+  expectedAmount    Float?
+  actualAmount      Float?
+  status            CashBagStatus @default(EMPTY)
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  trip            Trip?             @relation(fields: [tripId], references: [id])
+  collectionOrder CollectionOrder?  @relation(fields: [collectionOrderId], references: [id])
+
+  vaultTransactions VaultTransaction[]
+  bagHistory        BagHistory[]
+
+  @@map("cash_bags")
+}
+
+model BagHistory {
+  id         String   @id @default(uuid())
+  bagId      String
+  status     String
+  location   String?
+  userId     String?
+  timestamp  DateTime @default(now())
+  notes      String?
+
+  bag CashBag @relation(fields: [bagId], references: [id], onDelete: Cascade)
+
+  @@map("bag_histories")
+}
+
+// ========== VAULT ==========
+
+model VaultTransaction {
+  id              String   @id @default(uuid())
+  transactionType String   // DEPOSIT, WITHDRAWAL, TRANSFER
+  bagId           String?
+  amount          Float?
+  currency        Currency @default(USD)
+  referenceNumber String?
+  vaultOfficerId  String?
+  clientId        String?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  bag CashBag? @relation(fields: [bagId], references: [id])
+
+  @@map("vault_transactions")
+}
+
+// ========== ATM ==========
+
+model ATM {
+  id              String   @id @default(uuid())
+  branchId        String?
+  location        String
+  latitude        Float?
+  longitude       Float?
+  cashLevel       Float?
+  cassette1Amount Float?
+  cassette2Amount Float?
+  cassette3Amount Float?
+  cassette4Amount Float?
+  lastReplenished DateTime?
+  nextReplenishDue DateTime?
+  schedule        String?
+  technician      String?
+  status          String   @default("ACTIVE")
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  replenishmentLogs ATMReplenishmentLog[]
+
+  @@map("atms")
+}
+
+model ATMReplenishmentLog {
+  id            String   @id @default(uuid())
+  atmId         String
+  tripId        String?
+  amountAdded   Float?
+  previousLevel Float?
+  newLevel      Float?
+  technician    String?
+  replenishedAt DateTime @default(now())
+  notes         String?
+
+  atm ATM @relation(fields: [atmId], references: [id], onDelete: Cascade)
+
+  @@map("atm_replenishment_logs")
+}
+
+// ========== INCIDENTS ==========
+
+model Incident {
+  id              String           @id @default(uuid())
+  incidentNumber  String           @unique
+  tripId          String?
+  type            IncidentType
+  severity        IncidentSeverity @default(MEDIUM)
+  status          IncidentStatus   @default(OPEN)
+  description     String
+  location        String?
+  latitude        Float?
+  longitude       Float?
+  reportedById    String?
+  photos          String[]
+  witnesses       String?
+  policeCase      String?
+  resolution      String?
+  resolvedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  trip Trip? @relation(fields: [tripId], references: [id])
+
+  @@map("incidents")
+}
+
+// ========== DOCUMENTS ==========
+
+model Document {
+  id          String   @id @default(uuid())
+  tripId      String?
+  type        String   // TRIP_SHEET, COLLECTION_MANIFEST, DELIVERY_MANIFEST, DEPOSIT_SLIP, PROOF_OF_COLLECTION, VEHICLE_CHECKLIST, INCIDENT_REPORT, CLIENT_RECEIPT
+  title       String
+  fileUrl     String?
+  fileType    String?
+  fileSize    Int?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  trip Trip? @relation(fields: [tripId], references: [id])
+
+  @@map("documents")
+}
+
+// ========== GPS LOGS ==========
+
+model GPSLog {
+  id        String   @id @default(uuid())
+  tripId    String
+  latitude  Float
+  longitude Float
+  speed     Float?
+  heading   Float?
+  altitude  Float?
+  timestamp DateTime @default(now())
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@map("gps_logs")
+}
+
+// ========== NOTIFICATIONS ==========
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String?
+  type      String   // INFO, ALERT, PANIC, INCIDENT
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// ========== FINANCE ==========
+
+model Invoice {
+  id           String   @id @default(uuid())
+  invoiceNumber String  @unique
+  clientId     String
+  contractId   String?
+  amount       Float
+  currency     Currency @default(USD)
+  issueDate    DateTime
+  dueDate      DateTime
+  paidAt       DateTime?
+  status       String   @default("PENDING") // PENDING, PAID, OVERDUE, CANCELLED
+  description  String?
+  fileUrl      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  client   Client     @relation(fields: [clientId], references: [id])
+  contract Contract?  @relation("ContractInvoices", fields: [contractId], references: [id])
+
+  @@map("invoices")
+}
+
+// ========== AUDIT LOGS ==========
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}

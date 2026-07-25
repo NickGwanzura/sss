@@ -1,0 +1,18 @@
+{
+  "name": "suburban-cit",
+  "type": "docker",
+  "dockerfile": "Dockerfile",
+  "buildPath": ".",
+  "port": 3000,
+  "env": {
+    "NODE_ENV": "production",
+    "NEXT_TELEMETRY_DISABLED": "1"
+  },
+  "healthCheck": {
+    "path": "/",
+    "port": 3000,
+    "interval": 30,
+    "timeout": 10,
+    "retries": 3
+  }
+}
