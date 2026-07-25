@@ -38,7 +38,7 @@ COPY --from=builder /app/src/generated ./src/generated
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
 
-# Copy node_modules for Prisma CLI (needed for migrate deploy at runtime)
+# Copy node_modules for Prisma Client at runtime
 COPY --from=builder /app/node_modules ./node_modules
 
 # Set correct permissions
@@ -51,7 +51,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Entrypoint script: tests DB connectivity, runs migrations if possible, then starts Next.js
-COPY entrypoint.js ./
-
-CMD ["node", "entrypoint.js"]
+CMD ["node", "server.js"]
