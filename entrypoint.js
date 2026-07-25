@@ -70,26 +70,11 @@ async function main() {
 
     // Try migrations if connected
     if (connected) {
-      // Try direct Prisma CLI path first (avoids npx env var issues)
-      const prismaPaths = [
-        "./node_modules/.bin/prisma",
-        "node_modules/.bin/prisma",
-      ];
-      let prismaCmd = "npx prisma"; // fallback
-      for (const p of prismaPaths) {
-        try {
-          if (fs.existsSync(p)) {
-            prismaCmd = p;
-            break;
-          }
-        } catch {}
-      }
-
       try {
-        log(`Running: ${prismaCmd} migrate deploy`);
-        const output = execSync(`${prismaCmd} migrate deploy`, {
+        log("Running: node scripts/migrate.js");
+        const output = execSync("node scripts/migrate.js", {
           encoding: "utf8",
-          timeout: 60000,
+          timeout: 120000,
           env: { ...process.env },
         });
         log(`Migration output: ${output.trim()}`);
