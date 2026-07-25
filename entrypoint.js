@@ -93,13 +93,9 @@ async function main() {
 }
 
 function finish() {
-  // Write diagnostic file to public dir for browser access
+  // Write diagnostic file to /tmp for API route to read
   try {
-    const publicDir = path.join(process.cwd(), "public");
-    if (!fs.existsSync(publicDir)) {
-      fs.mkdirSync(publicDir, { recursive: true });
-    }
-    const filePath = path.join(publicDir, "diagnostic.json");
+    const filePath = path.join("/tmp", "diagnostic.json");
     fs.writeFileSync(
       filePath,
       JSON.stringify(
