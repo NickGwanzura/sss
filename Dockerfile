@@ -51,5 +51,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Start the app directly (migrations will be run separately once database connectivity is confirmed)
-CMD ["node", "server.js"]
+# Run migrations on startup with retry loop, then start the app
+CMD ["sh", "-c", "until npx prisma migrate deploy; do echo 'Database not ready, retrying in 5s...'; sleep 5; done && node server.js"]
