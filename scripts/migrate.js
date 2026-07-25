@@ -83,6 +83,7 @@ async function runMigrations() {
       }
 
       // Record the migration in _prisma_migrations table
+      // Try with migration_file first, fall back to without
       try {
         await prisma.$executeRawUnsafe(
           `INSERT INTO _prisma_migrations (id, migration_name, started_at, finished_at, migration_file, checksum, applied_steps_count) 
@@ -90,8 +91,17 @@ async function runMigrations() {
           dir,
           `migrations/${dir}/migration.sql`
         );
-      } catch (err) {
-        console.log(`  Could not record migration: ${err.message}`);
+      } catch {
+        try {
+          // Fallback: migration_file column might not exist in some Prisma versions
+          await prisma.$executeRawUnsafe(
+            `INSERT INTO _prisma_migrations (id, migration_name, started_at, finished_at, checksum, applied_steps_count) 
+             VALUES (gen_random_uuid(), $1, NOW(), NOW(), 'manual', 1)`,
+            dir
+          );
+        } catch (err2) {
+          console.log(`  Could not record migration (fallback also failed): ${err2.message}`);
+        }
       }
 
       console.log(`Migration ${dir} completed`);
