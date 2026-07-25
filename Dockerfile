@@ -51,5 +51,7 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Temporarily start without migrations until database connectivity is established
-CMD ["node", "server.js"]
+# Entrypoint script: tests DB connectivity, runs migrations if possible, then starts Next.js
+COPY entrypoint.js ./
+
+CMD ["node", "entrypoint.js"]
