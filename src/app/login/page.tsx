@@ -20,7 +20,7 @@ export default function LoginPage() {
     // Simulate login
     setTimeout(() => {
       setLoading(false);
-      router.push("/");
+      router.push("/trips");
     }, 1000);
   };
 
