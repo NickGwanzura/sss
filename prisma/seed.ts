@@ -1,5 +1,6 @@
 import { PrismaClient } from "../src/generated/prisma";
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 
 const prisma = new PrismaClient();
 
@@ -7,8 +8,8 @@ async function main() {
   console.log("Seeding database...");
 
   // Create admin user
-  const adminEmail = "admin@suburban.co.zw";
-  const adminPassword = "Admin123!";
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@suburban.co.zw";
+  const adminPassword = process.env.ADMIN_PASSWORD || crypto.randomUUID().slice(0, 16);
 
   const existingAdmin = await prisma.user.findUnique({
     where: { email: adminEmail },
@@ -100,10 +101,13 @@ async function main() {
     console.log("✅ Sample employee created: EMP-001");
   }
 
-  console.log("\n🎉 Seeding complete!");
-  console.log(`\nLogin credentials:`);
-  console.log(`  Email:    ${adminEmail}`);
-  console.log(`  Password: ${adminPassword}`);
+  console.log("\n✅ Seeding complete!");
+  if (process.env.ADMIN_PASSWORD) {
+    console.log(`\nLogin credentials:`);
+    console.log(`  Email:    ${adminEmail}`);
+  } else {
+    console.log(`\nAdmin account created with auto-generated password. Set ADMIN_PASSWORD env var to use a custom password.`);
+  }
 }
 
 main()

@@ -133,6 +133,8 @@ model User {
   dispatchedBy Trip[]     @relation("DispatcherAssignment")
   notifications Notification[]
 
+  @@index([role])
+  @@index([isActive])
   @@map("users")
 }
 
@@ -152,6 +154,7 @@ model Account {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@unique([provider, providerAccountId])
   @@map("accounts")
 }
@@ -163,6 +166,7 @@ model Session {
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("sessions")
 }
 
@@ -218,6 +222,7 @@ model ClientContact {
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
+  @@index([clientId])
   @@map("client_contacts")
 }
 
@@ -251,6 +256,8 @@ model Branch {
   tripStops        TripStop[]
   atms             ATM[]
 
+  @@index([clientId])
+  @@index([isActive])
   @@map("branches")
 }
 
@@ -276,6 +283,8 @@ model Contract {
   client    Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
   invoices  Invoice[]   @relation("ContractInvoices")
 
+  @@index([clientId])
+  @@index([status])
   @@map("contracts")
 }
 
@@ -325,6 +334,7 @@ model VehicleServiceLog {
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
+  @@index([vehicleId])
   @@map("vehicle_service_logs")
 }
 
@@ -341,6 +351,7 @@ model MaintenanceSchedule {
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
+  @@index([vehicleId])
   @@map("maintenance_schedules")
 }
 
@@ -373,6 +384,8 @@ model Employee {
 
   crewAssignments TripCrew[]
 
+  @@index([role])
+  @@index([isActive])
   @@map("employees")
 }
 
@@ -414,6 +427,12 @@ model Trip {
   dispatchLog DispatchLog?
   collectionOrders CollectionOrder[]
 
+  @@index([driverId])
+  @@index([dispatcherId])
+  @@index([vehicleId])
+  @@index([status])
+  @@index([scheduledDate])
+  @@index([driverId, scheduledDate])
   @@map("trips")
 }
 
@@ -433,6 +452,9 @@ model TripStop {
 
   trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
+  @@index([tripId])
+  @@index([branchId])
+  @@index([tripId, stopOrder])
   @@map("trip_stops")
 }
 
@@ -445,6 +467,8 @@ model TripCrew {
   trip     Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
   employee Employee @relation(fields: [employeeId], references: [id])
 
+  @@index([tripId])
+  @@index([employeeId])
   @@map("trip_crew")
 }
 
@@ -498,6 +522,11 @@ model CollectionOrder {
   trip   Trip?         @relation(fields: [tripId], references: [id], onDelete: SetNull)
   cashBags CashBag[]
 
+  @@index([clientId])
+  @@index([branchId])
+  @@index([tripId])
+  @@index([status])
+  @@index([pickupDate])
   @@map("collection_orders")
 }
 
@@ -524,6 +553,9 @@ model CashBag {
   vaultTransactions VaultTransaction[]
   bagHistory        BagHistory[]
 
+  @@index([tripId])
+  @@index([collectionOrderId])
+  @@index([status])
   @@map("cash_bags")
 }
 
@@ -538,6 +570,8 @@ model BagHistory {
 
   bag CashBag @relation(fields: [bagId], references: [id], onDelete: Cascade)
 
+  @@index([bagId])
+  @@index([bagId, timestamp])
   @@map("bag_histories")
 }
 
@@ -557,6 +591,8 @@ model VaultTransaction {
 
   bag CashBag? @relation(fields: [bagId], references: [id])
 
+  @@index([bagId])
+  @@index([createdAt])
   @@map("vault_transactions")
 }
 
@@ -586,6 +622,7 @@ model ATM {
 
   replenishmentLogs ATMReplenishmentLog[]
 
+  @@index([branchId])
   @@map("atms")
 }
 
@@ -602,6 +639,7 @@ model ATMReplenishmentLog {
 
   atm ATM @relation(fields: [atmId], references: [id], onDelete: Cascade)
 
+  @@index([atmId])
   @@map("atm_replenishment_logs")
 }
 
@@ -629,6 +667,10 @@ model Incident {
 
   trip Trip? @relation(fields: [tripId], references: [id])
 
+  @@index([tripId])
+  @@index([status])
+  @@index([severity])
+  @@index([type])
   @@map("incidents")
 }
 
@@ -647,6 +689,8 @@ model Document {
 
   trip Trip? @relation(fields: [tripId], references: [id])
 
+  @@index([tripId])
+  @@index([type])
   @@map("documents")
 }
 
@@ -664,6 +708,8 @@ model GPSLog {
 
   trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
+  @@index([tripId])
+  @@index([tripId, timestamp])
   @@map("gps_logs")
 }
 
@@ -681,6 +727,8 @@ model Notification {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([userId, read])
   @@map("notifications")
 }
 
@@ -705,6 +753,9 @@ model Invoice {
   client   Client     @relation(fields: [clientId], references: [id])
   contract Contract?  @relation("ContractInvoices", fields: [contractId], references: [id])
 
+  @@index([clientId])
+  @@index([contractId])
+  @@index([status])
   @@map("invoices")
 }
 
@@ -722,5 +773,10 @@ model AuditLog {
 
   user User? @relation(fields: [userId], references: [id])
 
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+  @@index([entityId])
+  @@index([createdAt])
   @@map("audit_logs")
 }

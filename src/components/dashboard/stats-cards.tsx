@@ -1,29 +1,35 @@
-"use client";
-
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Truck,
   ClipboardCheck,
-  DollarSign,
   Car,
   Users,
   AlertTriangle,
   Clock,
   Monitor,
-  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface DashboardStats {
+  activeTrips: number;
+  completedDeliveries: number;
+  vehiclesOnline: number;
+  vehiclesTotal: number;
+  crewOnDuty: number;
+  crewTotal: number;
+  openIncidents: number;
+  pendingCollections: number;
+}
 
 interface StatCardProps {
   title: string;
   value: string | number;
-  change?: string;
-  changeType?: "positive" | "negative" | "neutral";
   icon: React.ReactNode;
   color: string;
+  subtext?: string;
 }
 
-function StatCard({ title, value, change, changeType = "neutral", icon, color }: StatCardProps) {
+function StatCard({ title, value, icon, color, subtext }: StatCardProps) {
   return (
     <Card className="group transition-all duration-200 hover:shadow-md">
       <CardContent className="p-4 lg:p-5">
@@ -31,26 +37,8 @@ function StatCard({ title, value, change, changeType = "neutral", icon, color }:
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">{title}</p>
             <p className="text-xl font-bold tracking-tight lg:text-2xl">{value}</p>
-            {change && (
-              <div className="flex items-center gap-1">
-                <TrendingUp
-                  className={cn(
-                    "h-3 w-3",
-                    changeType === "positive" && "text-success",
-                    changeType === "negative" && "text-destructive"
-                  )}
-                />
-                <span
-                  className={cn(
-                    "text-xs",
-                    changeType === "positive" && "text-success",
-                    changeType === "negative" && "text-destructive",
-                    changeType === "neutral" && "text-muted-foreground"
-                  )}
-                >
-                  {change}
-                </span>
-              </div>
+            {subtext && (
+              <p className="text-xs text-muted-foreground">{subtext}</p>
             )}
           </div>
           <div
@@ -67,24 +55,53 @@ function StatCard({ title, value, change, changeType = "neutral", icon, color }:
   );
 }
 
-const STATS_DATA = [
-    { title: "Active CIT Trips", value: "12", change: "+3 today", changeType: "positive" as const, icon: <Truck className="h-5 w-5 text-white" />, color: "bg-blue-500" },
-    { title: "Completed Deliveries", value: "48", change: "+12 today", changeType: "positive" as const, icon: <ClipboardCheck className="h-5 w-5 text-white" />, color: "bg-green-500" },
-    { title: "Cash in Transit", value: "$2.4M", change: "↑ 8.2%", changeType: "positive" as const, icon: <DollarSign className="h-5 w-5 text-white" />, color: "bg-emerald-500" },
-    { title: "Vehicles Online", value: "8/10", change: "80% availability", changeType: "neutral" as const, icon: <Car className="h-5 w-5 text-white" />, color: "bg-indigo-500" },
-    { title: "Crew on Duty", value: "24", change: "6 crews", changeType: "neutral" as const, icon: <Users className="h-5 w-5 text-white" />, color: "bg-purple-500" },
-    { title: "Open Incidents", value: "2", change: "1 critical", changeType: "negative" as const, icon: <AlertTriangle className="h-5 w-5 text-white" />, color: "bg-red-500" },
-    { title: "Pending Collections", value: "15", change: "5 overdue", changeType: "negative" as const, icon: <Clock className="h-5 w-5 text-white" />, color: "bg-orange-500" },
-    { title: "ATM Replenishments", value: "6", change: "2 scheduled", changeType: "neutral" as const, icon: <Monitor className="h-5 w-5 text-white" />, color: "bg-teal-500" },
-    { title: "Daily Revenue", value: "$45.2K", change: "↑ 12.3%", changeType: "positive" as const, icon: <TrendingUp className="h-5 w-5 text-white" />, color: "bg-cyan-500" },
-];
-
-export function DashboardStatsGrid() {
+export function DashboardStatsGrid({ stats }: { stats: DashboardStats }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-      {STATS_DATA.map((stat) => (
-        <StatCard key={stat.title} {...stat} />
-      ))}
+      <StatCard
+        title="Active Trips"
+        value={stats.activeTrips}
+        icon={<Truck className="h-5 w-5 text-white" />}
+        color="bg-blue-500"
+      />
+      <StatCard
+        title="Completed Today"
+        value={stats.completedDeliveries}
+        icon={<ClipboardCheck className="h-5 w-5 text-white" />}
+        color="bg-green-500"
+      />
+      <StatCard
+        title="Vehicles Online"
+        value={`${stats.vehiclesOnline}/${stats.vehiclesTotal}`}
+        icon={<Car className="h-5 w-5 text-white" />}
+        color="bg-indigo-500"
+        subtext={`${Math.round((stats.vehiclesOnline / Math.max(stats.vehiclesTotal, 1)) * 100)}% availability`}
+      />
+      <StatCard
+        title="Crew on Duty"
+        value={`${stats.crewOnDuty}/${stats.crewTotal}`}
+        icon={<Users className="h-5 w-5 text-white" />}
+        color="bg-purple-500"
+      />
+      <StatCard
+        title="Open Incidents"
+        value={stats.openIncidents}
+        icon={<AlertTriangle className="h-5 w-5 text-white" />}
+        color="bg-red-500"
+        subtext={stats.openIncidents > 0 ? "Requires attention" : "All clear"}
+      />
+      <StatCard
+        title="Pending Collections"
+        value={stats.pendingCollections}
+        icon={<Clock className="h-5 w-5 text-white" />}
+        color="bg-orange-500"
+      />
+      <StatCard
+        title="ATM Replenishments"
+        value="—"
+        icon={<Monitor className="h-5 w-5 text-white" />}
+        color="bg-teal-500"
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 import { PrismaClient } from "../src/generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -17,8 +18,8 @@ async function main() {
   console.log("DATABASE_URL:", process.env.DATABASE_URL?.replace(/:[^:@]+@/, ":****@"));
 
   // Create admin user
-  const adminEmail = "admin@suburban.co.zw";
-  const adminPassword = "Admin123!";
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@suburban.co.zw";
+  const adminPassword = process.env.ADMIN_PASSWORD || crypto.randomUUID().slice(0, 16);
 
   const existingAdmin = await prisma.user.findUnique({
     where: { email: adminEmail },
@@ -111,9 +112,12 @@ async function main() {
   }
 
   console.log("\nSeeding complete!");
-  console.log(`\nLogin credentials:`);
-  console.log(`  Email:    ${adminEmail}`);
-  console.log(`  Password: ${adminPassword}`);
+  if (process.env.ADMIN_PASSWORD) {
+    console.log(`\nLogin credentials:`);
+    console.log(`  Email:    ${adminEmail}`);
+  } else {
+    console.log(`\nAdmin account created with auto-generated password. Set ADMIN_PASSWORD env var to use a custom password.`);
+  }
 }
 
 main()

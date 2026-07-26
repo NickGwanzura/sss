@@ -1,32 +1,47 @@
 "use client";
 
 import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ShieldAlert, Eye, EyeOff } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ShieldAlert, Eye, EyeOff, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@suburban.co.zw");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      toast.error("Please enter email and password");
+      return;
+    }
     setLoading(true);
-    // Simulate login
-    setTimeout(() => {
+
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+
+    if (result?.error) {
+      toast.error("Invalid email or password");
       setLoading(false);
-      router.push("/trips");
-    }, 1000);
+      return;
+    }
+
+    router.push("/trips");
+    router.refresh();
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-      {/* Background pattern */}
       <div className="absolute inset-0 opacity-5"
         style={{
           backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.3) 1px, transparent 1px)',
@@ -85,15 +100,6 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-slate-400">
-                <input type="checkbox" className="rounded border-slate-700 bg-slate-800" />
-                Remember me
-              </label>
-              <button type="button" className="text-sm text-primary hover:text-primary/80 transition-colors">
-                Forgot password?
-              </button>
-            </div>
             <Button
               type="submit"
               className="w-full h-11 text-base font-semibold"
@@ -101,7 +107,7 @@ export default function LoginPage() {
             >
               {loading ? (
                 <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Signing in...
                 </div>
               ) : (
@@ -110,12 +116,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 space-y-3 text-center text-xs text-slate-500">
-            <div className="rounded-lg border border-slate-800 bg-slate-800/30 p-3">
-              <p className="font-medium text-slate-400 mb-1">Demo Credentials</p>
-              <p>Email: admin@suburban.co.zw</p>
-              <p>Password: (any password)</p>
-            </div>
+          <div className="mt-6 text-center text-xs text-slate-500">
             <p>© 2024 Suburban Security Services. All rights reserved.</p>
           </div>
         </CardContent>
