@@ -25,13 +25,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/src/generated ./src/generated
 COPY --from=builder /app/scripts/entrypoint.sh ./scripts/entrypoint.sh
-COPY --from=builder /app/package.json ./package.json
 
-# Install only prisma CLI for migrations in production
-RUN npm install --omit=dev --legacy-peer-deps prisma @prisma/adapter-pg
+RUN npm ci --omit=dev --legacy-peer-deps
 
 RUN chown -R nextjs:nodejs /app
 
