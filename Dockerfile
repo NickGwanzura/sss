@@ -27,7 +27,7 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/scripts/entrypoint.sh ./scripts/entrypoint.sh
 
-RUN npm ci --omit=dev --legacy-peer-deps
+RUN npm install --omit=dev --legacy-peer-deps
 
 RUN chown -R nextjs:nodejs /app
 
